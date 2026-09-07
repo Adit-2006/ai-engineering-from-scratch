@@ -1,6 +1,4 @@
-"""Phase 13 Lesson 01 - the tool interface, four-step loop, no LLM.
-
-Implements the describe -> decide -> execute -> observe cycle used by every
+"""Phase 13 Lesson 01 - the tool interface, four-step loop, no LLM. Implements the describe -> decide -> execute -> observe cycle used by every
 2026 tool-calling stack (OpenAI, Anthropic, Gemini, MCP, A2A). The "decide"
 step is faked with a keyword router so the loop runs offline; replace it with
 any real provider in Lesson 02.
@@ -24,6 +22,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from typing_extensions import TypedDict
 
 MAX_TURNS = 5
 
@@ -53,6 +52,9 @@ def tool_get_weather(args: dict) -> dict:
     units = args.get("units", "celsius")
     temp = fake.get(city, 20)
     return {"city": city, "temp": temp, "units": units}
+
+def tool_get_stock_price(args: dict) -> dict:
+    return {"price" : 100} 
 
 
 REGISTRY: list[Tool] = [
@@ -103,6 +105,20 @@ REGISTRY: list[Tool] = [
         },
         executor=tool_get_weather,
     ),
+    Tool(
+        name = "get_stock_price",
+        description=("Use when the user asks for the current stock price by ticker."
+        "Do not use for historical prices or market summaries."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker" : {"type" : "string"}
+            },
+            "required": []
+        },
+        executor=tool_get_stock_price
+    )
 ]
 
 
@@ -168,10 +184,22 @@ def fake_decide(user_msg: str, history: list[dict]) -> dict:
                 {
                     "id": f"call_{uuid.uuid4().hex[:8]}",
                     "name": "get_weather",
-                    "arguments": {"city": city, "units": "celsius"},
+                    "arguments": {"city": city, "units": "celsius", "Water": "drank"},
                 }
             ]
         }
+
+    if "stock" in msg or "price" in msg :
+        return {
+            "tool_calls": [
+                {
+                "id" : f"call_{uuid.uuid4().hex[:8]}",
+                "name": "get_stock_price",
+                "arguments": {"ticker": "500"},
+                }
+            ]
+        }
+        
     return {"content": "I cannot route that query to any registered tool."}
 
 
@@ -188,7 +216,7 @@ def run_loop(user_msg: str) -> None:
             print(f"MODEL : {decision['content']}")
             return
         for call in decision["tool_calls"]:
-            tool = tools_by_name.get(call["name"])
+            tool = tools_by_name.get(call["name"])  
             print(f"TURN {turn} DECIDE : call {call['name']} id={call['id']}")
             print(f"           args = {json.dumps(call['arguments'])}")
             if tool is None:
@@ -232,6 +260,7 @@ def main() -> None:
         "what time is it?",
         "tell me the weather in Bengaluru",
         "write me a haiku about tea",
+        "find the price of stock",
     ):
         run_loop(query)
         print()
