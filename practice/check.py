@@ -1,64 +1,59 @@
-class Vector :
+def numerical_derivative(f, x, h=1e-7):
+    return (f(x + h) - f(x - h)) / (2 * h)
+    
+def numerical_gradient(f, point, h=1e-7):
+    gradient = []
+    for i in range(len(point)):
+        point_plus = list(point)
+        point_minus = list(point)
+        point_plus[i] += h
+        point_minus[i] -= h
+        partial = (f(point_plus) - f(point_minus)) / (2 * h)
+        gradient.append(partial)
+    return gradient
 
-    def __init__ (self, data : list[float] | str | list[int]):
-        self.data = list(data)
-        self.size = len(self.data)
-        
-    def __repre__ (self) -> str:
-        return f'vector : {self.data}'
+import math
 
-    def __add__ (self, other):
-        return Vector([a + b for a, b in zip(self.data, other.data)]);
-    def __sub__ (self, other):
-        return Vector([a - b for a,b in zip(self.data, other.data)]);
-    def __mul__ (self, scaler):
-        return sum(a * scaler for a in self.data)
-    def __dot__ (self, other):
-        return sum(a * b for a, b in zip(self.data, other.data))
-    def __magnitude__ (self):
-        return sum(a ** 2 for a in self.data) ** 0.5
+test_functions = [
+    ("x^2",      lambda x: x**2,          lambda x: 2*x),
+    ("x^3",      lambda x: x**3,          lambda x: 3*x**2),
+    ("sin(x)",   lambda x: math.sin(x),   lambda x: math.cos(x)),
+    ("e^x",      lambda x: math.exp(x),   lambda x: math.exp(x)),
+    ("1/x",      lambda x: 1/x,           lambda x: -1/x**2),
+]
 
-## Now to create a matrix
+x = 2.0
+print(f"{'Function':<12} {'Numerical':>12} {'Analytical':>12} {'Error':>12}")
+print("-" * 50)
+for name, f, df in test_functions:
+    num = numerical_derivative(f, x)
+    ana = df(x)
+    err = abs(num - ana)
+    print(f"{name:<12} {num:12.6f} {ana:12.6f} {err:12.2e}")
+print()
 
-class Matrix:
-    def __init__(self, data):
-        self.data = [list(row) for row in data]
-        self.rows = len(self.data)
-        self.columns = len(self.data[0])
-        self.shape = (self.rows, self.columns)
+def f(x):
+    return x ** 3
 
-    def __repre__ (self):
-        rows = "\n".join(str(row) for row in self.data)
-        return f"Matrix{self.shape} : {rows}"
-    def __add__ (self, other):
-        return Matrix([[self.data[i][j] + other.data[i][j] for j in range(self.columns)] for i in range(self.rows)])
+def f_prime(x):
+    return numerical_derivative(f, x)
 
-    def __sub__ (self, other):
-        return Matrix([[self.data[i][j] - other.data[i][j] for j in range(self.columns)] for i in range(self.rows)])
+def f_double_prime(x):
+    return numerical_derivative(f_prime, x)
 
-    def scaler_multiply (self, scaler):
-        return Matrix (
-            [[self.data[i][j] * scaler for j in range(self.columns)] for i in range(self.rows)]
-        )
+print(f_double_prime(2))
 
-    def element_wise_mul(self, other):
-        return Matrix (
-            [[self.data[i][j] * other.data[i][j] for j in range(self.columns)] for i in range(self.rows)]
-        )
+print()
 
-    def matmul(self, other):
-        return Matrix (
-            [
-                [sum(self.data[i][j] * other.data[j][k] for j in range(self.columns))
-                    for k in range(other.columns)]
-                for i in range(self.rows)
-            ]
-        )
-    def transpose(self):
-        return Matrix(
-            [[self.data[j][i] for j in range(self.rows)] for i in range(self.columns)]
-        )
+def f_2d(point):
+    x, y = point
+    return (x - 3)**2 + (y + 1)**2
 
-    # to be continued.....
-    def determinant :
-
+point = [0, 0]
+lr = 0.1
+for step in range(30):
+    grad = numerical_gradient(f_2d, point)
+    point = [p - lr * g for p, g in zip(point, grad)]
+    loss = f_2d(point)
+    if step % 5 == 0 or step == 29:
+        print(f"step {step:2d}  point=({point[0]:7.4f}, {point[1]:7.4f})  f={loss:.6f}")
