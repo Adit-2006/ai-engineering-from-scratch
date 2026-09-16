@@ -1,59 +1,77 @@
-def numerical_derivative(f, x, h=1e-7):
-    return (f(x + h) - f(x - h)) / (2 * h)
-    
-def numerical_gradient(f, point, h=1e-7):
-    gradient = []
-    for i in range(len(point)):
-        point_plus = list(point)
-        point_minus = list(point)
-        point_plus[i] += h
-        point_minus[i] -= h
-        partial = (f(point_plus) - f(point_minus)) / (2 * h)
-        gradient.append(partial)
-    return gradient
 
-import math
 
-test_functions = [
-    ("x^2",      lambda x: x**2,          lambda x: 2*x),
-    ("x^3",      lambda x: x**3,          lambda x: 3*x**2),
-    ("sin(x)",   lambda x: math.sin(x),   lambda x: math.cos(x)),
-    ("e^x",      lambda x: math.exp(x),   lambda x: math.exp(x)),
-    ("1/x",      lambda x: 1/x,           lambda x: -1/x**2),
-]
 
-x = 2.0
-print(f"{'Function':<12} {'Numerical':>12} {'Analytical':>12} {'Error':>12}")
-print("-" * 50)
-for name, f, df in test_functions:
-    num = numerical_derivative(f, x)
-    ana = df(x)
-    err = abs(num - ana)
-    print(f"{name:<12} {num:12.6f} {ana:12.6f} {err:12.2e}")
-print()
 
-def f(x):
-    return x ** 3
+class Value:
+    def __init__(self, data, children=(), op=''):
+        self.data = data
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._prev = set(children)
+        self._op = op
 
-def f_prime(x):
-    return numerical_derivative(f, x)
+    def backward(self):
+        vst = set()
+        topo = []
+        def build_topo(v):
+            if v not in vst:
+                vst.add(v)
+                for child in v._prev:
+                    build_topo(child)
+                topo.append(v)
+        build_topo(self)
+        self.grad = 1.0
+        for node in reversed(topo):
+            node._backward()
+            
 
-def f_double_prime(x):
-    return numerical_derivative(f_prime, x)
+    def __repr__(self):
+        return f"Value(data={self.data:.4f}, grad={self.grad:.4f})"
 
-print(f_double_prime(2))
+    def __pow__ (self, n):
+        out = Value(self.data ** n, (self,), f'**{n}')
+        def _backward():
+            self.grad += n * (self.data ** (n - 1)) * out.grad
+        out._backward = _backward
+        return out
 
-print()
+    def __add__ (self, other):
+        out = Value(self.data + other.data, (self, other), "+")
+        def _backward():
+            self.grad += out.grad
+            other.grad += out.grad
+        out._backward = _backward
+        return out
 
-def f_2d(point):
-    x, y = point
-    return (x - 3)**2 + (y + 1)**2
+    def __mul__ (self, other):
+        out = Value(self.data * other.data, (self, other), "*")
+        def _backward():
+            self.grad += other.data * out.grad
+            other.grad += self.data * out.grad
+        out._backward = _backward
+        return out
+    def relu(self):
+        out = Value (max(0, self.data), (self,), 'relu')
+        def _backward():
+            self.grad += (1 if self.data > 0 else 0) * out.grad
+        out._backward = _backward
+        return out
+#expression = relu(w1x1 + w2x2 + b)
+x1 = Value(4)
+x2 = Value(5)
+w1 = Value(6)
+w2 = Value(7)
+b = Value(10)
+exp1 = x1 * w1
+exp2 = x2 * w2 
+exp3 = exp1 + exp2 + b
+ans = exp3.relu()
+ans.backward()
 
-point = [0, 0]
-lr = 0.1
-for step in range(30):
-    grad = numerical_gradient(f_2d, point)
-    point = [p - lr * g for p, g in zip(point, grad)]
-    loss = f_2d(point)
-    if step % 5 == 0 or step == 29:
-        print(f"step {step:2d}  point=({point[0]:7.4f}, {point[1]:7.4f})  f={loss:.6f}")
+print(f"x1 : {x1}")
+print(f"x2 : {x2}")
+print(f'ans: {ans}')
+
+
+
+
