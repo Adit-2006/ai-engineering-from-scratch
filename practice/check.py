@@ -1,77 +1,70 @@
+import math
+from collections import defaultdict
 
+class NaiveBayes:
+    def __init__(self, smoothing=1.0):
+        self.smoothing = smoothing
+        self.class_counts = defaultdict(int)
+        self.word_counts = defaultdict(lambda: defaultdict(int))
+        self.class_word_totals = defaultdict(int)
+        self.vocab = set()
 
+    def train(self, documents, labels):
+        for doc, label in zip(documents, labels):
+            self.class_counts[label] += 1
+            words = doc.lower().split()
+            for word in words:
+                self.word_counts[label][word] += 1
+                self.class_word_totals[label] += 1
+                self.vocab.add(word)
 
+    def predict(self, document):
+        words = document.lower().split()
+        total_docs = sum(self.class_counts.values())
+        vocab_size = len(self.vocab)
+        best_class = None
+        best_score = float("-inf")
+        for cls in self.class_counts:
+            score = math.log(self.class_counts[cls] / total_docs)
+            for word in words:
+                count = self.word_counts[cls].get(word, 0)
+                total = self.class_word_totals[cls]
+                score += math.log((count + self.smoothing) / (total + self.smoothing * vocab_size))
+            if score > best_score:
+                best_score = score
+                best_class = cls
+        return best_class
 
-class Value:
-    def __init__(self, data, children=(), op=''):
-        self.data = data
-        self.grad = 0.0
-        self._backward = lambda: None
-        self._prev = set(children)
-        self._op = op
+train_docs = [
+    "win free money now",
+    "free lottery ticket winner",
+    "claim your prize today free",
+    "urgent offer free cash",
+    "congratulations you won free",
+    "meeting tomorrow at noon",
+    "project update attached",
+    "can we schedule a call",
+    "quarterly report review",
+    "lunch on thursday sounds good",
+    "team standup notes attached",
+    "please review the pull request",
+]
 
-    def backward(self):
-        vst = set()
-        topo = []
-        def build_topo(v):
-            if v not in vst:
-                vst.add(v)
-                for child in v._prev:
-                    build_topo(child)
-                topo.append(v)
-        build_topo(self)
-        self.grad = 1.0
-        for node in reversed(topo):
-            node._backward()
-            
+train_labels = [
+    "spam", "spam", "spam", "spam", "spam",
+    "ham", "ham", "ham", "ham", "ham", "ham", "ham",
+]
 
-    def __repr__(self):
-        return f"Value(data={self.data:.4f}, grad={self.grad:.4f})"
+classifier = NaiveBayes()
+classifier.train(train_docs, train_labels)
 
-    def __pow__ (self, n):
-        out = Value(self.data ** n, (self,), f'**{n}')
-        def _backward():
-            self.grad += n * (self.data ** (n - 1)) * out.grad
-        out._backward = _backward
-        return out
+test_messages = [
+    "free money waiting for you",
+    "meeting rescheduled to friday",
+    "you won a free prize",
+    "please review the attached report",
+]
 
-    def __add__ (self, other):
-        out = Value(self.data + other.data, (self, other), "+")
-        def _backward():
-            self.grad += out.grad
-            other.grad += out.grad
-        out._backward = _backward
-        return out
-
-    def __mul__ (self, other):
-        out = Value(self.data * other.data, (self, other), "*")
-        def _backward():
-            self.grad += other.data * out.grad
-            other.grad += self.data * out.grad
-        out._backward = _backward
-        return out
-    def relu(self):
-        out = Value (max(0, self.data), (self,), 'relu')
-        def _backward():
-            self.grad += (1 if self.data > 0 else 0) * out.grad
-        out._backward = _backward
-        return out
-#expression = relu(w1x1 + w2x2 + b)
-x1 = Value(4)
-x2 = Value(5)
-w1 = Value(6)
-w2 = Value(7)
-b = Value(10)
-exp1 = x1 * w1
-exp2 = x2 * w2 
-exp3 = exp1 + exp2 + b
-ans = exp3.relu()
-ans.backward()
-
-print(f"x1 : {x1}")
-print(f"x2 : {x2}")
-print(f'ans: {ans}')
-
-
-
+for msg in test_messages:
+    print(f"  '{msg}' -> {classifier.predict(msg)}")
 
