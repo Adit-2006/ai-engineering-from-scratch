@@ -39,6 +39,7 @@ a model myself, not just call APIs.
 ## Progress log
 | Date | Lesson | Quiz | Note |
 |------|--------|------|------|
+| 2026-09-28 | 01/09 information-theory | 3/3 | Detour (skipped 01-08). Strong on the loss math and the `predicted - true` gradient. Needed a push on why cross-entropy punishes confident-wrong errors ~370x more than confident-right ones, and initially read perplexity as tokens-per-word rather than effective choice count. Knocked KL asymmetry well (forward=mode-covering, reverse=mode-seeking); asked a sharp question comparing `D_KL(P||Q) = H(P,Q) - H(P)` against `H(Y|X) = H(X,Y) - H(X)` — worth revisiting whether boundedness was absorbed. |
 
 ## Review queue
-<empty for now; learn adds lessons the quizzes flag>
+- `01/09` — mutual information vs correlation. Solid on the linear/nonlinear distinction, but the U-shaped-feature failure case was never worked through. Also unconfirmed: whether `H(Y|X) <= H(Y)` and KL's unboundedness register as a usable *test* for telling the two subtractions apart.
