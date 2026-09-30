@@ -109,3 +109,6 @@ dependent = [[0.45, 0.05], [0.05, 0.45]]
 
 print(f"MI (independent): {mutual_information(independent):.4f} bits")
 print(f"MI (dependent):   {mutual_information(dependent):.4f} bits")
+print()
+
+
